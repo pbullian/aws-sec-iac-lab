@@ -1,0 +1,17 @@
+# Shift-left local: corre en CADA commit, antes de que el código entre al repo.
+# Instalación (una vez):  pip install pre-commit && pre-commit install
+# Correr a mano sobre todo:  pre-commit run --all-files
+#
+# Nota: actualizá los `rev` a la última versión cuando lo instales.
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.2.334
+    hooks:
+      - id: checkov
+        args: ["--directory", ".", "--quiet", "--compact"]

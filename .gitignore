@@ -1,0 +1,23 @@
+# Terraform
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+network_generated.tf      # HCL temporal de -generate-config-out (movelo a network.tf)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variables y secretos — NUNCA al repo
+terraform.tfvars
+*.auto.tfvars
+*.pem
+*.ppk
+
+# OS
+.DS_Store
+
+# NOTA: .terraform.lock.hcl SÍ se commitea (pinea versiones de providers).

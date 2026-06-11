@@ -1,0 +1,10 @@
+# Copiá este archivo a terraform.tfvars y completá tus valores.
+# terraform.tfvars está gitignoreado — no lo subas.
+
+department       = "tu-identificacion-de-clase" # ej: "grupo-3"
+allowed_ssh_cidr = "TU.IP.PUBLICA/32"           # tu IP /32 — NUNCA 0.0.0.0/0
+
+# Completá DESPUÉS de crear la red a mano y anotar los IDs de la consola:
+# vpc_id            = "vpc-xxxxxxxxxxxxxxxxx"
+# public_subnet_id  = "subnet-xxxxxxxxxxxxxxxxx"
+# private_subnet_id = "subnet-xxxxxxxxxxxxxxxxx"

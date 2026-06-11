@@ -1,0 +1,13 @@
+# Configuración de Checkov (shift-left).
+# Filosofía: una supresión sin justificación es una vulnerabilidad con papeleo.
+directory:
+  - .
+framework:
+  - terraform
+compact: true
+quiet: true
+
+# Documentá ACÁ cada control que decidas saltear y POR QUÉ.
+# Solo descomentá si tenés una razón real (ej: restricción del Learner Lab).
+# skip-check:
+#   - CKV_AWS_79   # IMDSv2: justificación obligatoria si lo salteás

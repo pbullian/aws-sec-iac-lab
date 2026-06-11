@@ -1,0 +1,37 @@
+name: terraform-ci
+
+# Shift-left en CI: el "gate" que impide mergear IaC insegura.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+
+      # init sin backend: en CI no tocamos la nube, solo validamos sintaxis/escaneo.
+      - name: terraform init
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        run: terraform validate
+
+      - name: Checkov (gate de shift-left)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: terraform
+          quiet: true
+          compact: true
+          # soft_fail: false → si Checkov encuentra algo, el job FALLA y no se mergea.
+          soft_fail: false
