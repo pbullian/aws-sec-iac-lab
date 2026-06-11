@@ -1,36 +1,83 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # terraform import — adoptar la red que creaste A MANO (Terraform 1.5+)
 # ─────────────────────────────────────────────────────────────────────────────
-# Flujo (Lab "Importá tu red a Terraform"):
-#   1. Completá los IDs en terraform.tfvars (vpc_id, *_subnet_id, etc.).
-#   2. Descomentá los bloques `import {}` de abajo.
-#   3. Generá el HCL automáticamente:
-#        terraform plan -generate-config-out=network_generated.tf
-#   4. Revisá lo generado, movelo a network.tf y borrá network_generated.tf.
-#   5. Objetivo final:  terraform plan  →  "No changes."
-#      (significa que tu código refleja EXACTAMENTE lo que hay en la nube)
+# La config de los recursos ya está en network.tf. Acá sólo enlazás cada recurso
+# con el ID real que anotaste de la consola (o sacaste con `aws ec2 describe-*`).
 #
-# Empezá por la VPC y las subredes; después sumá IGW, NAT GW, route tables,
-# NACLs y security groups (uno por uno, repitiendo el ciclo plan-generate).
+# Reemplazá cada REPLACE_* por tu ID. Después:
+#   terraform init
+#   terraform plan     # "N to import, X to change" (X = sólo tags → OK)
+#   terraform apply    # importa + converge tags (NADA se recrea)
+#   terraform plan     # → "No changes." ✅
+#
+# NO uses `-generate-config-out`: para estos recursos genera HCL inválido.
 
-# import {
-#   to = aws_vpc.main
-#   id = var.vpc_id            # ej: vpc-0abc123def456...
-# }
+import {
+  to = aws_vpc.main
+  id = "REPLACE_VPC_ID" # vpc-xxxxxxxx
+}
 
-# import {
-#   to = aws_subnet.public
-#   id = var.public_subnet_id  # ej: subnet-0aaa...
-# }
+import {
+  to = aws_subnet.public
+  id = "REPLACE_PUBLIC_SUBNET_ID" # subnet-xxxxxxxx
+}
 
-# import {
-#   to = aws_subnet.private
-#   id = var.private_subnet_id # ej: subnet-0bbb...
-# }
+import {
+  to = aws_subnet.private
+  id = "REPLACE_PRIVATE_SUBNET_ID" # subnet-xxxxxxxx
+}
 
-# TODO alumno: agregá bloques import {} para:
-#   - aws_internet_gateway        (igw-...)
-#   - aws_nat_gateway             (nat-...)
-#   - aws_route_table  x2         (rtb-...)
-#   - aws_network_acl  x2         (acl-...)
-#   - aws_security_group x2+      (sg-...)
+import {
+  to = aws_internet_gateway.igw
+  id = "REPLACE_IGW_ID" # igw-xxxxxxxx
+}
+
+import {
+  to = aws_eip.nat
+  id = "REPLACE_EIP_ALLOCATION_ID" # eipalloc-xxxxxxxx
+}
+
+import {
+  to = aws_nat_gateway.nat
+  id = "REPLACE_NAT_GW_ID" # nat-xxxxxxxx
+}
+
+import {
+  to = aws_route_table.public
+  id = "REPLACE_PUBLIC_RT_ID" # rtb-xxxxxxxx
+}
+
+import {
+  to = aws_route_table.private
+  id = "REPLACE_PRIVATE_RT_ID" # rtb-xxxxxxxx
+}
+
+import {
+  to = aws_route_table_association.public
+  id = "REPLACE_PUBLIC_SUBNET_ID/REPLACE_PUBLIC_RT_ID" # formato: subnet-.../rtb-...
+}
+
+import {
+  to = aws_route_table_association.private
+  id = "REPLACE_PRIVATE_SUBNET_ID/REPLACE_PRIVATE_RT_ID"
+}
+
+import {
+  to = aws_network_acl.public
+  id = "REPLACE_PUBLIC_NACL_ID" # acl-xxxxxxxx
+}
+
+import {
+  to = aws_network_acl.private
+  id = "REPLACE_PRIVATE_NACL_ID" # acl-xxxxxxxx
+}
+
+import {
+  to = aws_security_group.public
+  id = "REPLACE_PUBLIC_SG_ID" # sg-xxxxxxxx
+}
+
+import {
+  to = aws_security_group.private
+  id = "REPLACE_PRIVATE_SG_ID" # sg-xxxxxxxx
+}

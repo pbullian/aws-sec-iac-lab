@@ -9,69 +9,77 @@ La idea del laboratorio:
    security groups) — para entender las primitivas.
 2. La **importás** a Terraform (`terraform import`) — lo hecho a mano pasa a ser código.
 3. Generás las **máquinas con IA** (Terraform), las **validás con shift-left**
-   (Checkov) y recién ahí hacés `apply`. Las VMs quedan **100% como código**.
+   (Trivy / Checkov) y recién ahí hacés `apply`. Las VMs quedan **100% como código**.
 
 > Filosofía: **"Generá rápido con IA, validá siempre con shift-left."**
 > Una supresión de un control sin justificación es una vulnerabilidad con papeleo.
 
+> ✅ Flujo validado end-to-end contra un AWS Academy Learner Lab real
+> (import de 14 recursos → `plan` = *No changes* → 2 EC2 con IMDSv2 + disco cifrado → `destroy`).
+
 ---
 
-## Pre-requisitos
+## Entorno: AWS CloudShell (nada que instalar en tu máquina)
 
-- **AWS Academy Learner Lab** activo (credenciales temporales desde *AWS Details*).
-- **Terraform ≥ 1.5** *o* **OpenTofu ≥ 1.6** (`terraform` / `tofu`).
-- **Python 3** + **Checkov**: `pip install checkov`
-- (Opcional) **pre-commit**: `pip install pre-commit && pre-commit install`
+Todo corre **en AWS**. No necesitás instalar nada localmente.
 
-### Cargar credenciales del Learner Lab
+1. Entrá a la consola del Learner Lab → ícono **CloudShell** (barra superior).
+   *(CloudShell ya usa tus credenciales del lab — no copiás ni pegás keys.)*
+2. Una sola vez, instalá las herramientas en tu `$HOME` persistente:
+   ```bash
+   git clone https://github.com/pbullian/aws-sec-iac-lab.git
+   cd aws-sec-iac-lab
+   bash bootstrap.sh        # Terraform + Trivy → ~/.local/bin  (~90 s)
+   exec bash                # recargar PATH
+   ```
 
-Las credenciales del Learner Lab son **temporales** (caducan cada pocas horas).
-Copialas de *AWS Details → AWS CLI* a `~/.aws/credentials` o exportalas:
+> ¿CloudShell deshabilitado en tu sección? Hay un `.devcontainer` (Codespaces o
+> Docker local) como alternativa — ahí sí pegás las 3 credenciales del lab una vez.
 
-```bash
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-export AWS_SESSION_TOKEN=...
-export AWS_DEFAULT_REGION=us-east-1
-```
+---
 
-Si Terraform empieza a dar errores de auth, **re-exportá** — seguramente caducaron.
+## Pre-requisitos (los instala `bootstrap.sh`)
+
+- **Terraform ≥ 1.5** *o* **OpenTofu ≥ 1.6** (para los bloques `import {}`).
+- **Trivy** — scanner shift-left local (binario único, rápido).
+- *(CI usa **Checkov** además — corre solo en GitHub Actions, no en tu máquina.)*
 
 ---
 
 ## Flujo del laboratorio
 
 ### Lab A — El repositorio base
-```bash
-git clone https://github.com/pbullian/aws-sec-iac-lab.git
-cd aws-sec-iac-lab
-cp terraform.tfvars.example terraform.tfvars   # completá department y allowed_ssh_cidr
-terraform init
-```
-Recorré la estructura (abajo) para ver qué hay y qué falta.
+`bootstrap.sh` + `terraform init`. Completá `terraform.tfvars`
+(`department`, `allowed_ssh_cidr`). Mirá que `network.tf` ya trae los bloques y
+`compute.tf` está vacío a propósito.
 
 ### Lab B — Importá tu red a Terraform
-1. Anotá de la consola los IDs de lo que creaste a mano y completalos en `terraform.tfvars`.
-2. Descomentá los bloques `import {}` en `imports.tf`.
-3. Generá el HCL:
+1. Anotá de la consola los IDs de lo que creaste a mano.
+2. Pegalos en `imports.tf` (reemplazá los `REPLACE_*`).
+3. Ajustá `network.tf` si tu red difiere (CIDR, AZ, reglas).
+4. Importá y converge:
    ```bash
-   terraform plan -generate-config-out=network_generated.tf
+   terraform plan      # "14 to import, N to change"  (N = sólo tags → OK)
+   terraform apply      # importa + converge tags; NADA se recrea
+   terraform plan       # → "No changes." ✅
    ```
-4. Revisá lo generado, movelo a `network.tf`, borrá `network_generated.tf`.
-5. **Objetivo:** `terraform plan` → **`No changes`**. Tu red hecha a mano ya es código.
+
+> ⚠️ **No uses `terraform plan -generate-config-out`** para esto: genera HCL
+> inválido (atributos en cero/conflictivos) para VPC/subred/etc. Por eso
+> `network.tf` ya viene escrito. El camino confiable es config + `import`.
 
 ### Lab C — Máquinas con IA + shift-left
-1. Generá `compute.tf` con tu asistente de IA (prompt inicial sugerido dentro del archivo).
+1. Generá `compute.tf` con tu asistente de IA (prompt inicial dentro del archivo).
 2. **Escaneá ANTES de aplicar:**
    ```bash
-   checkov -d .
+   trivy config .
    ```
-   Va a marcar cosas (IMDSv2, EBS sin cifrar, SSH 0.0.0.0/0…). **Está bien que lo haga.**
-3. Arreglá hasta que pase. Documentá supresiones en `checkov.yaml`.
+   Va a marcar IMDSv2 (AWS-0028), disco sin cifrar (AWS-0131), SSH 0.0.0.0/0. **Está bien.**
+3. Arreglá hasta que pase. Documentá supresiones justificadas.
 4. Recién ahora:
    ```bash
-   terraform plan      # revisá el diff
-   terraform apply      # las VMs quedan creadas, como código y ya validadas
+   terraform plan
+   terraform apply       # 2 EC2, como código y ya validadas
    ```
 
 ---
@@ -80,28 +88,26 @@ Recorré la estructura (abajo) para ver qué hay y qué falta.
 
 | Archivo | Qué es |
 |---|---|
-| `versions.tf` | Versión de Terraform/OpenTofu y del provider AWS. |
-| `providers.tf` | Provider AWS + `default_tags` (aplica la política de tags sola). |
+| `bootstrap.sh` | Instala Terraform + Trivy en CloudShell (`~/.local/bin`). |
+| `versions.tf` / `providers.tf` | Versiones + provider AWS con `default_tags`. |
 | `variables.tf` | Variables (incluye `allowed_ssh_cidr` con validación anti-`0.0.0.0/0`). |
 | `data.tf` | AMI de Amazon Linux 2023 vía SSM (sin hardcodear IDs). |
-| `imports.tf` | Bloques `import {}` para adoptar la red hecha a mano *(Lab B)*. |
-| `network.tf` | Recursos de red importados *(arranca vacío)*. |
+| `network.tf` | Bloques de la red **ya escritos** — el target del import *(Lab B)*. |
+| `imports.tf` | Bloques `import {}` — pegás tus IDs *(Lab B)*. |
 | `compute.tf` | Las VMs — **las generás con IA** *(Lab C, arranca vacío)*. |
 | `outputs.tf` | IPs y comando SSH *(descomentar tras crear compute)*. |
 | `backend.tf` | Estado remoto S3 *(opcional; por defecto state local)*. |
-| `checkov.yaml` | Config de shift-left + supresiones documentadas. |
-| `.pre-commit-config.yaml` | Hooks: `fmt`, `validate`, `checkov` en cada commit. |
-| `.github/workflows/ci.yml` | Gate de CI: bloquea el merge si Checkov falla. |
+| `checkov.yaml` / `.pre-commit-config.yaml` / `.github/workflows/ci.yml` | Shift-left adicional. |
 
 ---
 
 ## Limpieza
 
-Al terminar (¡y siempre antes de cerrar el lab por un tiempo largo!):
+Como toda la red queda importada a Terraform, **un solo comando borra todo**
+(VMs + red + NAT GW + EIP) — clave para no dejar el NAT GW facturando:
 ```bash
 terraform destroy
 ```
-Recordá además **eliminar el NAT GW** si lo creaste a mano (ver slide de NOTAS del curso).
 
 ---
 
