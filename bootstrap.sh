@@ -34,6 +34,19 @@ if ! grep -q 'HOME/.local/bin' "$HOME/.bashrc" 2>/dev/null; then
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
+# El provider de AWS pesa ~700MB y NO entra en el 1GB persistente de $HOME.
+# Mandamos el cache de Terraform (.terraform) al disco efímero, más grande.
+# (El state y el lock siguen en el directorio del repo — eso sí persiste.)
+if ! grep -q 'TF_DATA_DIR' "$HOME/.bashrc" 2>/dev/null; then
+  echo 'export TF_DATA_DIR=/tmp/tfdata' >> "$HOME/.bashrc"
+fi
+export TF_DATA_DIR=/tmp/tfdata
+# Trivy también cachea su DB de checks — al efímero
+if ! grep -q 'TRIVY_CACHE_DIR' "$HOME/.bashrc" 2>/dev/null; then
+  echo 'export TRIVY_CACHE_DIR=/tmp/trivycache' >> "$HOME/.bashrc"
+fi
+export TRIVY_CACHE_DIR=/tmp/trivycache
+
 echo ""
 echo "✅ Listo:"
 terraform version | head -1
