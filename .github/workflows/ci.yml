@@ -1,6 +1,8 @@
 name: terraform-ci
 
-# Shift-left en CI: el "gate" que impide mergear IaC insegura.
+# Shift-left en CI. El gate bloquea IaC insegura en lo que VOS generás (compute.tf).
+# La red (network.tf) se importa "tal cual" y su SSH abierto "por ahora" es un
+# ejercicio del lab — eso lo ves localmente con `trivy config .` en CloudShell.
 on:
   pull_request:
   push:
@@ -14,24 +16,23 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.9.5"
+          terraform_version: "1.9.8"
 
       - name: terraform fmt
         run: terraform fmt -check -recursive
 
-      # init sin backend: en CI no tocamos la nube, solo validamos sintaxis/escaneo.
       - name: terraform init
         run: terraform init -backend=false
 
       - name: terraform validate
         run: terraform validate
 
-      - name: Checkov (gate de shift-left)
+      # Gate DURO sobre las máquinas generadas con IA. compute.tf arranca vacío
+      # (pasa); cuando agregás instancias inseguras, este paso falla y no mergeás.
+      - name: Checkov (gate sobre compute.tf)
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: .
-          framework: terraform
+          file: compute.tf
           quiet: true
           compact: true
-          # soft_fail: false → si Checkov encuentra algo, el job FALLA y no se mergea.
           soft_fail: false
